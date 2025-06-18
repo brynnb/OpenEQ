@@ -2,7 +2,6 @@
 
 A Python-based converter for extracting and converting classic EverQuest game assets into modern formats suitable for 3D applications, web development, and preservation.
 
-
 ## Overview
 
 This converter processes original EverQuest game files and converts them into modern 3D formats. It handles complex proprietary game data including:
@@ -12,8 +11,6 @@ This converter processes original EverQuest game files and converts them into mo
 - **Materials** - Surface properties and transparency
 - **Character Models** - 3D models with animations (basic support)
 - **Scene Structure** - Object placement and hierarchy
-
-
 
 ## File Format Support
 
@@ -53,86 +50,7 @@ This converter processes original EverQuest game files and converts them into mo
 - **DDS**: DirectDraw Surface (compressed textures)
 - **Support**: Automatic format detection and conversion
 
-### Output Formats (OpenEQ Proprietary)
-
-#### `.OEZ` Files (OpenEQ Zone)
-
-Our custom binary format for zone data:
-
-```
-Header:
-  - Material count (uint32)
-  - Materials array:
-    - Flags (uint32)
-    - Parameters (uint32)
-    - Filename count (uint32)
-    - Filenames (variable-length strings)
-
-  - Object count (uint32)
-  - Objects array:
-    - Mesh count (uint32)
-    - Meshes array:
-      - Material ID (uint32)
-      - Collidable flag (uint32)
-      - Vertex count (uint32)
-      - Vertex data (9 floats per vertex: pos(3) + normal(3) + uv(2) + bone(1))
-      - Index count (uint32)
-      - Index data (uint32 array)
-
-  - Placeable count (uint32)
-  - Placeables array:
-    - Object reference (uint32)
-    - Position (3 floats)
-    - Rotation (3 floats)
-    - Scale (3 floats)
-
-  - Light count (uint32)
-  - Lights array:
-    - Position (3 floats)
-    - Color (3 floats)
-    - Radius (float)
-    - Attenuation (float)
-    - Flags (uint32)
-```
-
-#### `.OEC` Files (OpenEQ Character)
-
-Binary format for character models with skeletal animation data:
-
-```
-Header:
-  - Mesh count (uint32)
-  - Meshes array:
-    - Material flags (uint32)
-    - Texture count (uint32)
-    - Texture filenames (variable-length strings)
-    - Vertex count (uint32)
-    - Vertex data separated by component:
-      - Positions (3 floats per vertex)
-      - Normals (3 floats per vertex)
-      - Texture coordinates (2 floats per vertex)
-      - Bone indices (uint32 per vertex)
-    - Polygon count (uint32)
-    - Polygon indices (uint32 array)
-
-  - Bone parent count (uint32)
-  - Bone hierarchy (int32 array)
-
-  - Animation count (uint32)
-  - Animations array:
-    - Animation name (variable-length string)
-    - Frame data (7 floats per frame: position(3) + rotation(4))
-```
-
-#### Compressed Archive (`.ZIP`)
-
-Final output contains:
-
-- Binary zone/character data (`.oez` or `.oec`)
-- Converted texture files (`.png`)
-- Optimized for modern loading
-
-### Modern Output Formats
+### Output Formats
 
 #### `.GLB` Files (glTF Binary)
 
@@ -147,7 +65,7 @@ For Three.js and web development:
 
 ### Prerequisites
 
-- **Python 3.7+** 
+- **Python 3.7+**
 - **EverQuest Files** in accessible directory
 
 ### Configuration
@@ -187,22 +105,22 @@ For Three.js and web development:
 
 ## Usage
 
-### Basic Zone Conversion
+### Zone Conversion
 
 ```bash
-# Convert EverQuest zone to OpenEQ format
+# Convert EverQuest zone to glTF format
 python3 converter.py gfaydark
 
-# Output: gfaydark.zip (contains .oez + textures)
+# Output: output/gfaydark.glb (ready for Three.js/web)
 ```
 
 ### Character Model Conversion
 
 ```bash
-# Convert character models
+# Character conversion (coming soon)
 python3 converter.py gfaydark_chr
 
-# Output: gfaydark_chr.zip (contains .oec + textures)
+# Currently shows: "Character model conversion not yet implemented"
 ```
 
 ### Batch Conversion
@@ -212,49 +130,30 @@ python3 converter.py gfaydark_chr
 for zone in gfaydark qeynos freeport; do
     python3 converter.py $zone
 done
+
+# All output goes to output/ folder
 ```
 
-### Web-Ready Conversion (Three.js)
+## Output Format
 
-```bash
-# Step 1: Convert to OpenEQ format
-python3 converter.py gfaydark
+### glTF Binary (.glb)
 
-# Step 2: Convert to glTF for web
-python3 oes_to_gltf.py gfaydark.zip gfaydark.glb
+The converter outputs industry-standard glTF 2.0 binary files optimized for web use:
 
-# Result: gfaydark.glb (ready for Three.js)
-```
+- **Format**: Self-contained .glb files in `output/` folder
+- **Size**: ~1MB for typical zones (80% smaller than original)
+- **Speed**: Fast single-step conversion
+- **Compatibility**: Works with Three.js, Blender, Unity, and all modern 3D engines
+- **Features**: Embedded textures, materials, and geometry
 
-## Output Formats
-
-### File Size Comparison
-
-| Format                  | Size  | Use Case                    |
-| ----------------------- | ----- | --------------------------- |
-| `gfaydark.zip` (OpenEQ) | 1.1MB | OpenEQ engine, preservation |
-| `gfaydark.glb` (glTF)   | 224KB | Web development, Three.js   |
-
-### Contents Structure
-
-**OpenEQ ZIP Archive**:
+### Output File Structure
 
 ```
-gfaydark.zip
-├── zone.oez              # Binary zone data
-├── fire1.png             # Converted textures
-├── ARMORSIGN.png
-├── CITYSTONE.png
-└── ...                   # Additional textures
-```
-
-**glTF Binary**:
-
-```
-gfaydark.glb              # Self-contained binary
-├── JSON scene data       # Embedded
-├── Binary mesh data      # Embedded
-└── PNG textures         # Embedded
+output/
+└── gfaydark.glb          # Single self-contained file
+    ├── JSON scene data   # Embedded metadata
+    ├── Binary mesh data  # Optimized geometry
+    └── PNG textures      # Embedded and converted
 ```
 
 ## Three.js Integration
@@ -435,13 +334,14 @@ pip install -r requirements.txt
 ```
 converter/
 ├── converter.py          # Main conversion script
+├── direct_gltf_export.py # Direct glTF conversion
 ├── buffer.py            # Binary data handling
 ├── s3d.py               # S3D archive reader
 ├── wld.py               # WLD fragment parser
-├── zonefile.py          # Zone output format
-├── charfile.py          # Character output format
-├── oes_to_gltf.py       # glTF export
+├── zonefile.py          # Zone data structures
+├── charfile.py          # Character format (future)
 ├── three_js_viewer.html # Web viewer
+├── output/              # Generated .glb files
 └── README.md            # This file
 ```
 

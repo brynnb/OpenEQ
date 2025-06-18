@@ -69,6 +69,11 @@
         font-size: 18px;
         display: none;
       }
+
+      .drag-over {
+        border: 3px dashed #4caf50 !important;
+        background-color: rgba(76, 175, 80, 0.1) !important;
+      }
     </style>
   </head>
   <body>
@@ -80,6 +85,9 @@
         <button onclick="resetCamera()">Reset Camera</button>
         <button onclick="toggleWireframe()">Toggle Wireframe</button>
         <button onclick="toggleLighting()">Toggle Lighting</button>
+        <button id="reloadButton" onclick="reloadLastFile()" disabled>
+          Reload Last File
+        </button>
       </div>
 
       <div id="info">
@@ -87,6 +95,7 @@
         <div>• Mouse: Orbit camera</div>
         <div>• Wheel: Zoom</div>
         <div>• Right-click + drag: Pan</div>
+        <div>• Drag & drop GLB files anywhere</div>
         <div id="stats"></div>
       </div>
 
@@ -105,6 +114,8 @@
       let wireframeMode = false;
       let lightingEnabled = true;
       let ambientLight, directionalLight;
+      let lastFileData = null;
+      let lastFileName = null;
 
       // Initialize Three.js scene
       function init() {
@@ -154,17 +165,23 @@
           .getElementById("fileInput")
           .addEventListener("change", handleFileSelect, false);
 
+        // Setup drag and drop
+        setupDragAndDrop();
+
+        // Try to restore last file from localStorage
+        restoreLastFile();
+
         // Start render loop
         animate();
       }
 
       function setupLighting() {
-        // Ambient light
-        ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+        // Ambient light - increased brightness
+        ambientLight = new THREE.AmbientLight(0x404040, 5.2);
         scene.add(ambientLight);
 
-        // Directional light (sun)
-        directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        // Directional light (sun) - increased brightness
+        directionalLight = new THREE.DirectionalLight(0xffffff, 5.2);
         directionalLight.position.set(100, 100, 50);
         directionalLight.castShadow = true;
         directionalLight.shadow.mapSize.width = 2048;
@@ -188,10 +205,25 @@
       function handleFileSelect(event) {
         const file = event.target.files[0];
         if (!file) return;
+        processFile(file);
+      }
 
+      function processFile(file) {
         const reader = new FileReader();
         reader.onload = function (e) {
+          // Store the file data and name for reload functionality
+          lastFileData = e.target.result;
+          lastFileName = file.name;
+
+          // Try to save to localStorage (with size limits)
+          saveFileToStorage(e.target.result, file.name);
+
           loadGLTF(e.target.result, file.name);
+
+          // Enable the reload button and update its text
+          const reloadButton = document.getElementById("reloadButton");
+          reloadButton.disabled = false;
+          reloadButton.textContent = `Reload: ${file.name}`;
         };
         reader.readAsArrayBuffer(file);
       }
@@ -301,7 +333,8 @@
           let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
           cameraZ *= 1.5;
 
-          camera.position.set(cameraZ, cameraZ * 0.5, cameraZ);
+          // Position camera at an angle above the flattened landscape
+          camera.position.set(cameraZ * 0.7, cameraZ * 0.8, cameraZ * 0.7);
           camera.lookAt(0, 0, 0);
           controls.target.set(0, 0, 0);
           controls.update();
@@ -329,6 +362,110 @@
         lightingEnabled = !lightingEnabled;
         ambientLight.visible = lightingEnabled;
         directionalLight.visible = lightingEnabled;
+      }
+
+      function reloadLastFile() {
+        if (lastFileData && lastFileName) {
+          console.log("Reloading:", lastFileName);
+          loadGLTF(lastFileData, lastFileName);
+        }
+      }
+
+      function saveFileToStorage(arrayBuffer, fileName) {
+        try {
+          // Convert ArrayBuffer to base64 for storage
+          const bytes = new Uint8Array(arrayBuffer);
+          const binary = bytes.reduce(
+            (acc, byte) => acc + String.fromCharCode(byte),
+            ""
+          );
+          const base64 = btoa(binary);
+
+          // Check size (localStorage has ~5MB limit)
+          const sizeInMB = base64.length / (1024 * 1024);
+          if (sizeInMB > 4) {
+            console.log(
+              `File too large (${sizeInMB.toFixed(
+                1
+              )}MB) for localStorage. Use drag-and-drop after refresh.`
+            );
+            return;
+          }
+
+          localStorage.setItem("lastFileName", fileName);
+          localStorage.setItem("lastFileData", base64);
+          console.log(
+            `Saved ${fileName} to localStorage (${sizeInMB.toFixed(2)}MB)`
+          );
+        } catch (e) {
+          console.log("Could not save file to localStorage:", e.message);
+        }
+      }
+
+      function restoreLastFile() {
+        try {
+          const fileName = localStorage.getItem("lastFileName");
+          const base64Data = localStorage.getItem("lastFileData");
+
+          if (fileName && base64Data) {
+            // Convert base64 back to ArrayBuffer
+            const binary = atob(base64Data);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+              bytes[i] = binary.charCodeAt(i);
+            }
+
+            lastFileData = bytes.buffer;
+            lastFileName = fileName;
+
+            // Enable the reload button
+            const reloadButton = document.getElementById("reloadButton");
+            reloadButton.disabled = false;
+            reloadButton.textContent = `Reload: ${fileName}`;
+
+            console.log(`Restored ${fileName} from localStorage`);
+          }
+        } catch (e) {
+          console.log("Could not restore file from localStorage:", e.message);
+          // Clear corrupted data
+          localStorage.removeItem("lastFileName");
+          localStorage.removeItem("lastFileData");
+        }
+      }
+
+      function setupDragAndDrop() {
+        const container = document.getElementById("container");
+
+        container.addEventListener("dragover", function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          container.classList.add("drag-over");
+        });
+
+        container.addEventListener("dragleave", function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          container.classList.remove("drag-over");
+        });
+
+        container.addEventListener("drop", function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          container.classList.remove("drag-over");
+
+          const files = e.dataTransfer.files;
+          if (files.length > 0) {
+            const file = files[0];
+            if (
+              file.name.toLowerCase().endsWith(".glb") ||
+              file.name.toLowerCase().endsWith(".gltf")
+            ) {
+              processFile(file);
+            } else {
+              alert("Please drop a .glb or .gltf file");
+            }
+          }
+        });
       }
 
       function onWindowResize() {
