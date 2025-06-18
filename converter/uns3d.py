@@ -13,7 +13,7 @@ def main():
     try:
         files = s3d.readS3D(file(args.file))
     except:
-        print >>sys.stderr, 'Could not open file:', args.file
+        print(>>sys.stderr, 'Could not open file:', args.file)
         return 1
     
     if args.outdir is None:
@@ -26,7 +26,7 @@ def main():
 
     for fn, data in files.items():
         if args.verbose:
-            print fn
+            print(fn)
         try:
             with file('%s/%s' % (args.outdir, fn), 'wb') as fp:
                 fp.write(data)

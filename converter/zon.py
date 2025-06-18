@@ -23,7 +23,7 @@ def readZon(data, zone, s3d):
             readTer(s3d[fn], zone, s3d)
             objects.append(None) # Shouldn't be placing zones...
         elif fn.endswith('.mod'):
-            print 'reading mod', fn
+            print('reading mod', fn)
             obj = zone.addObject(name=fn)
             #readMod(s3d[fn], obj, s3d)
             objects.append(obj)
@@ -50,4 +50,4 @@ def readZon(data, zone, s3d):
         pos = b.float(3)
         rot = b.float(3)
         scale = b.float()
-        #print obj, pos, rot, scale
+        #print(obj, pos, rot, scale)

@@ -27,7 +27,7 @@ def readTer(data, zone, s3d):
             elif type == 3:
                 value = b.uint()
             else:
-                print 'unknown type:', type
+                print('unknown type:', type)
                 return
             materials[index][2][pname] = value
     
